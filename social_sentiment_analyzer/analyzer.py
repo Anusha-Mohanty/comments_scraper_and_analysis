@@ -1,10 +1,10 @@
-import torch
-from transformers import AutoTokenizer, AutoModelForSequenceClassification
+# import torch
+# from transformers import AutoTokenizer, AutoModelForSequenceClassification
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from typing import List, Dict
 from googletrans import Translator
-from config import GEMINI_API_KEY
-import google.generativeai as genai
+# from config import GEMINI_API_KEY
+# import google.generativeai as genai
 
 # Load Hugging Face model and tokenizer once
 # This will download the model from the Hugging Face Hub on the first run.
