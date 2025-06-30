@@ -5,8 +5,9 @@ from collections import defaultdict
 
 from config import *
 from scrapers.instagram_scraper import get_comments_from_post, handle_verification_challenges
-from utils.sheet_handler import get_gspread_client, get_all_tabs, get_all_posts, update_status_for_post
-from utils.file_utils import sanitize_filename
+from utils.sheet_handler import get_gspread_client, get_all_tabs, get_all_posts, update_status_for_post, update_brand_report_links
+from social_sentiment_analyzer.analyzer import analyze_comments_vader
+from social_sentiment_analyzer.visualizer import create_sentiment_bar_chart, create_word_cloud
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -18,6 +19,10 @@ import random
 import glob
 
 COOKIES_FILE = 'insta_cookies.json'
+
+def sanitize_filename(name: str) -> str:
+    """Sanitizes a string to be a valid filename."""
+    return re.sub(r'[\\/*?:"<>|]', '_', name)
 
 def save_cookies(driver, path=COOKIES_FILE):
     cookies = driver.get_cookies()
@@ -190,20 +195,71 @@ def main():
                 print(f"No comments collected for brand '{brand_name}'. Skipping report generation.")
                 continue
 
-            # --- Save all comments for the brand to a single file ---
-            all_comments_filename = f"{sanitize_filename(brand_name)}_all_comments.json"
-            all_comments_filepath = os.path.join(data_dir, all_comments_filename)
-            with open(all_comments_filepath, 'w', encoding='utf-8') as f:
-                json.dump(all_brand_comments, f, ensure_ascii=False, indent=4)
-            print(f"Saved all {len(all_brand_comments)} comments for '{brand_name}' to {all_comments_filepath}")
+            # --- Create reports directory ---
+            reports_dir = "social_sentiment_analyzer/reports"
+            os.makedirs(reports_dir, exist_ok=True)
+
+            # --- VADER Analysis ---
+            print(f"\nAnalyzing {len(all_brand_comments)} comments for '{brand_name}' using VADER...")
+            vader_results = analyze_comments_vader(all_brand_comments)
+
+            vader_report_path = os.path.join(reports_dir, f"{sanitize_filename(brand_name)}_sentiment_analysis_vader.json")
+            with open(vader_report_path, 'w', encoding='utf-8') as f:
+                json.dump(vader_results, f, ensure_ascii=False, indent=4)
+            print(f"VADER analysis report saved to {vader_report_path}")
+
+            vader_barchart_path = os.path.join(reports_dir, f"{sanitize_filename(brand_name)}_sentiment_barchart_vader.png")
+            create_sentiment_bar_chart(vader_results['sentiment_distribution'], vader_barchart_path)
+
+            vader_wordcloud_path = os.path.join(reports_dir, f"{sanitize_filename(brand_name)}_wordcloud_vader.png")
+            create_word_cloud([c['translated_text'] for c in vader_results['analyzed_comments'] if c.get('translated_text')], vader_wordcloud_path)
+
+            # --- Gemini Analysis ---
+            # print(f"\nAnalyzing {len(all_brand_comments)} comments for '{brand_name}' using Gemini...")
+            # gemini_results = analyze_comments_gemini(all_brand_comments)
+
+            # gemini_report_path = os.path.join(reports_dir, f"{sanitize_filename(brand_name)}_sentiment_analysis_gemini.json")
+            # with open(gemini_report_path, 'w', encoding='utf-8') as f:
+            #     json.dump(gemini_results, f, ensure_ascii=False, indent=4)
+            # print(f"Gemini analysis report saved to {gemini_report_path}")
+
+            # gemini_barchart_path = os.path.join(reports_dir, f"{sanitize_filename(brand_name)}_sentiment_barchart_gemini.png")
+            # create_sentiment_bar_chart(gemini_results['sentiment_distribution'], gemini_barchart_path)
+
+            # gemini_wordcloud_path = os.path.join(reports_dir, f"{sanitize_filename(brand_name)}_wordcloud_gemini.png")
+            # create_word_cloud([c['original_text'] for c in gemini_results['analyzed_comments'] if c.get('original_text')], gemini_wordcloud_path)
+
+            # --- Hugging Face Analysis ---
+            # print(f"\nAnalyzing {len(all_brand_comments)} comments for '{brand_name}' using Hugging Face...")
+            # hf_results = analyze_comments_hf(all_brand_comments)
+
+            # hf_report_path = os.path.join(reports_dir, f"{sanitize_filename(brand_name)}_sentiment_analysis_hf.json")
+            # with open(hf_report_path, 'w', encoding='utf-8') as f:
+            #     json.dump(hf_results, f, ensure_ascii=False, indent=4)
+            # print(f"Hugging Face analysis report saved to {hf_report_path}")
+
+            # hf_barchart_path = os.path.join(reports_dir, f"{sanitize_filename(brand_name)}_sentiment_barchart_hf.png")
+            # create_sentiment_bar_chart(hf_results['sentiment_distribution'], hf_barchart_path)
+
+            # hf_wordcloud_path = os.path.join(reports_dir, f"{sanitize_filename(brand_name)}_wordcloud_hf.png")
+            # create_word_cloud([c['original_text'] for c in hf_results['analyzed_comments'] if c.get('original_text')], hf_wordcloud_path)
+
+            # --- Update Sheet with Gemini report links ---
+            # print(f"Updating Google Sheet for '{brand_name}' with Gemini report links...")
+            # update_brand_report_links(
+            #     sheet,
+            #     gemini_barchart_path,
+            #     gemini_wordcloud_path
+            # )
+
+            print(f"\n--- Finished processing for {brand_name} ---")
 
     except Exception as e:
         print(f"\nAn unexpected error occurred: {e}")
     finally:
-        if driver:
+        if 'driver' in locals() and driver:
             driver.quit()
-        print("\nScraping complete. All comments have been saved.")
-        print("To analyze the comments, run the API and send a request to the /analyze endpoint for each brand.")
+        print("\nProcess finished.")
 
 if __name__ == "__main__":
     main()
