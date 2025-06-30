@@ -11,8 +11,7 @@ URL_COLUMN = 'Post Urls'
 STATUS_COLUMN = 'Status'
 COMMENT_COUNT_COLUMN = 'Comments Count'
 COMMENTS_LINK_COLUMN = 'Comments Link'
-ANALYZED_COMMENTS_LINK_COLUMN = 'Analyzed Comments Link'
-WORDCLOUD_ALL_LINK_COLUMN = 'Wordcloud All Link'
+
 
 # Scraping configuration
 SCROLL_COUNT = 10
