@@ -16,6 +16,3 @@ WORDCLOUD_ALL_LINK_COLUMN = 'Wordcloud All Link'
 
 # Scraping configuration
 SCROLL_COUNT = 10
-
-# Gemini API Key
-GEMINI_API_KEY = 'AIzaSyAR58WwkLMzHrbn37PTb2rZ1oXzQ6gj2Aw' 
